@@ -16,6 +16,21 @@ public sealed class OrderRepositoryTests
         Assert.Equal(order, repository.GetOrderById("ORD-1"));
     }
 
+    [Fact]
+    public void GetAllOrdersReturnsSnapshotInsteadOfInternalCollection()
+    {
+        var repository = new OrderRepository();
+        repository.AddOrder(new Order("ORD-1", "Cliente", 99.90m, "PENDING"));
+
+        var snapshot = repository.GetAllOrders();
+
+        Assert.Single(snapshot);
+        Assert.IsNotType<List<Order>>(snapshot);
+        repository.AddOrder(new Order("ORD-2", "Outro cliente", 20m, "PENDING"));
+        Assert.Single(snapshot);
+        Assert.Equal(2, repository.GetAllOrders().Count);
+    }
+
     [Theory]
     [InlineData("", "Cliente", 10, "PENDING")]
     [InlineData("ORD-1", " ", 10, "PENDING")]

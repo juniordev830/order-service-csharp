@@ -1,39 +1,42 @@
-# Order Service CSharp
+# Order Service C#
 
-High-performance Order Management REST API built with C# and .NET 8. Features asynchronous domain processing, strongly typed models, and clean service abstractions.
+Protótipo em C# que modela pedidos em memória. O código atual contém um registro de pedido, um repositório simples baseado em lista e operações para adicionar e localizar pedidos.
 
-## 🚀 Features
+> Apesar do nome, a versão atual é uma aplicação de console, não uma API HTTP nem um serviço distribuído.
 
-- **C# & .NET 8**: Modern runtime performance and language capabilities.
-- **Clean Architecture**: Domain entities, DTOs, and controller patterns.
-- **REST API**: Standard HTTP responses and error handling.
+## Tecnologias
 
-## 🛠️ Tech Stack
+- C#
+- .NET SDK compatível com o arquivo `.csproj`
 
-- **Language**: C# 12
-- **Framework**: .NET 8 Web API
-
-## 📦 Getting Started
-
-### Prerequisites
-- .NET 8 SDK
-
-### Building and Running
+## Executar
 
 ```bash
-# Clone repository
-git clone https://github.com/YOUR_USERNAME/order-service-csharp.git
-
-# Navigate to project
-cd order-service-csharp
-
-# Build project
 dotnet build
-
-# Run application
 dotnet run
 ```
 
-## 📜 License
+## Comportamento atual
 
-This project is licensed under the MIT License.
+- Cria um pedido de demonstração.
+- Valida se o identificador do pedido não está vazio.
+- Armazena o pedido na memória do processo.
+- Consulta o pedido pelo identificador e imprime o resultado.
+
+Os dados são perdidos quando o programa termina.
+
+## Estrutura
+
+- `Program.cs`: modelos, repositório em memória e ponto de entrada.
+- `OrderService.csproj`: configuração do projeto.
+- `README.md`: documentação.
+
+## Próximas melhorias
+
+- Separar modelo, repositório e aplicação em arquivos distintos.
+- Validar identificador, cliente e valor total.
+- Adicionar testes unitários.
+- Introduzir persistência se necessário.
+- Só depois criar endpoints HTTP, autenticação e documentação de API.
+
+Projeto educacional em evolução.

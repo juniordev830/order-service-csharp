@@ -16,3 +16,4 @@ jobs:
           dotnet-version: "8.0.x"
       - run: dotnet restore
       - run: dotnet build --no-restore --configuration Release
+      - run: dotnet test tests/OrderService.Tests/OrderService.Tests.csproj --configuration Release

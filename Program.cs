@@ -33,7 +33,8 @@ namespace OrderService
             return _orders.FirstOrDefault(o => o.OrderId == orderId);
         }
 
-        public IEnumerable<Order> GetAllOrders() => _orders;
+        // Return a snapshot so callers cannot mutate the repository's internal list.
+        public IReadOnlyList<Order> GetAllOrders() => _orders.ToArray();
     }
 
     public class Program
@@ -42,7 +43,7 @@ namespace OrderService
         {
             var repository = new OrderRepository();
             var order = new Order("ORD-2026-001", "Alice Smith", 299.99m, "PENDING");
-            
+
             repository.AddOrder(order);
             var fetched = repository.GetOrderById("ORD-2026-001");
 

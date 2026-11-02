@@ -33,7 +33,7 @@ O `OrderRepository` oferece:
 - `GetOrderById(string)`: consulta por identificador; retorna `null` para uma chave vazia ou inexistente.
 - `GetAllOrders()`: devolve uma cópia da coleção, para que alterações posteriores no repositório não modifiquem o snapshot já retornado.
 
-O repositório é baseado em `List<Order>` e não é persistente nem thread-safe. Não deve ser usado como armazenamento de produção.
+O repositório usa uma `List<Order>` em memória protegida por um lock por instância para evitar IDs duplicados e leituras inconsistentes sob concorrência. Não é persistente nem substitui um banco de dados ou uma arquitetura distribuída em produção.
 
 ## Testes
 
@@ -43,7 +43,7 @@ Execute:
 dotnet test tests/OrderService.Tests/OrderService.Tests.csproj --configuration Release
 ```
 
-Os testes cobrem inclusão e consulta, snapshot da coleção, campos inválidos, IDs duplicados, normalização e consulta com identificadores vazios.
+Os testes cobrem inclusão e consulta, snapshot da coleção, campos inválidos, IDs duplicados, normalização, consulta com identificadores vazios e operações concorrentes.
 
 ## CI e segurança de dependências
 

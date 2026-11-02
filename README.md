@@ -1,20 +1,16 @@
 # Order Service C#
 
-Protótipo educacional em C# que modela pedidos em memória. A versão atual é uma aplicação de console com um repositório simples, validações de entrada e testes unitários. **Não é uma API HTTP, não usa banco de dados e não persiste pedidos entre execuções.**
+Projeto educacional de Engenharia de Software em **C# e .NET 8** que modela pedidos com regras de negócio, transições de estado atômicas e testes de concorrência. É uma aplicação de console que usa dados em memória: **não é uma API HTTP, não usa banco de dados e não persiste pedidos entre execuções**.
 
 ## Tecnologias
 
-- C# e .NET 8
+- C# / .NET 8 e records imutáveis
 - xUnit para testes automatizados
 - GitHub Actions para build, testes e auditoria de pacotes NuGet
 
-## Requisitos
+## Requisitos e execução
 
-- .NET SDK 8.0
-
-## Executar
-
-Na raiz do repositório:
+Instale o .NET SDK 8. Na raiz do repositório:
 
 ```bash
 dotnet restore
@@ -22,52 +18,63 @@ dotnet build --configuration Release
 dotnet run
 ```
 
-O programa cria um pedido demonstrativo, salva no repositório em memória, consulta pelo identificador e imprime o resultado.
+A demonstração cria um pedido e percorre o fluxo `PENDING → CONFIRMED → SHIPPED → DELIVERED`. Nenhuma transação financeira real é realizada.
 
-## Comportamento implementado
+## Regras de negócio
 
 O `OrderRepository` oferece:
 
-- `AddOrder(Order)`: rejeita pedido nulo, identificador vazio, nome de cliente vazio, total menor ou igual a zero, status vazio e IDs duplicados.
-- Normalização: remove espaços nas extremidades de identificador, nome do cliente e status antes de salvar.
-- `GetOrderById(string)`: consulta por identificador; retorna `null` para uma chave vazia ou inexistente.
-- `GetAllOrders()`: devolve uma cópia da coleção, para que alterações posteriores no repositório não modifiquem o snapshot já retornado.
+- `AddOrder(Order)`: valida ID, cliente, total maior que zero e status conhecido; normaliza espaços e o status para maiúsculas; rejeita IDs duplicados.
+- `GetOrderById(string)`: busca por ID; retorna `null` para ID ausente ou vazio.
+- `GetAllOrders()`: devolve um snapshot da coleção.
+- `UpdateOrderStatus(string orderId, string nextStatus)`: altera o status atomicamente ou rejeita transições inválidas. Aceita diferenças de caixa e espaços nas extremidades; repetir o status atual é idempotente.
 
-O repositório usa uma `List<Order>` em memória protegida por um lock por instância para evitar IDs duplicados e leituras inconsistentes sob concorrência. Não é persistente nem substitui um banco de dados ou uma arquitetura distribuída em produção.
+### Máquina de estados do pedido
+
+| Status atual | Próximos estados permitidos |
+| --- | --- |
+| `PENDING` | `CONFIRMED`, `CANCELLED` |
+| `CONFIRMED` | `SHIPPED`, `CANCELLED` |
+| `SHIPPED` | `DELIVERED` |
+| `DELIVERED` | Nenhum (terminal) |
+| `CANCELLED` | Nenhum (terminal) |
+
+`AddOrder` aceita os cinco status conhecidos para permitir carregar pedidos existentes. `UpdateOrderStatus` bloqueia retrocessos e cancelamentos após o envio.
+
+**Exemplo de integração:**
+
+```csharp
+var repository = new OrderRepository();
+repository.AddOrder(new Order("ORD-42", "Cliente Exemplo", 49.90m, "PENDING"));
+
+var confirmado = repository.UpdateOrderStatus("ORD-42", "CONFIRMED");
+var enviado = repository.UpdateOrderStatus("ORD-42", "SHIPPED");
+Console.WriteLine(enviado.Status); // SHIPPED
+```
+
+Status desconhecidos e IDs vazios causam `ArgumentException`. IDs inexistentes em atualizações causam `KeyNotFoundException`; transições proibidas causam `InvalidOperationException`. Em todos esses casos, o pedido permanece inalterado.
+
+## Consistência e limites
+
+O repositório mantém uma lista em memória protegida por um `lock` por instância. Leitura, criação e atualização usam o mesmo lock, evitando estados intermediários observáveis dentro da instância. Uma transição cria um novo record `Order`, preservando os snapshots anteriores.
+
+**Não há** banco, autenticação, eventos de domínio, auditoria, transações distribuídas ou coordenação entre múltiplas instâncias. O mecanismo não é pronto para produção e o exemplo não realiza cobranças, remessas ou entregas reais.
 
 ## Testes
-
-Execute:
 
 ```bash
 dotnet test tests/OrderService.Tests/OrderService.Tests.csproj --configuration Release
 ```
 
-Os testes cobrem inclusão e consulta, snapshot da coleção, campos inválidos, IDs duplicados, normalização, consulta com identificadores vazios e operações concorrentes.
+A suíte verifica inclusão, leitura, validação, IDs duplicados, normalização, concorrência de criação, transições permitidas e proibidas, estados terminais, idempotência, atomicidade de atualizações concorrentes e snapshots imutáveis.
 
-## CI e segurança de dependências
+O workflow `.github/workflows/ci.yml` executa build e testes em pull requests. Também verifica vulnerabilidades de dependências NuGet.
 
-O workflow `.github/workflows/ci.yml` restaura os pacotes, verifica vulnerabilidades NuGet (incluindo dependências transitivas), compila em Release e executa os testes.
+## Próximas etapas
 
-## Estrutura
+- Separar regras de negócio em uma camada de serviço e repositório persistente.
+- Adicionar histórico/auditoria de status e eventos de domínio.
+- Expor uma API somente após autenticação, autorização, validação HTTP e testes de integração.
+- Adicionar observabilidade, operações idempotentes persistentes e tratamento de concorrência entre instâncias.
 
-```text
-.
-├── Order.cs
-├── OrderRepository.cs
-├── Program.cs
-├── OrderService.csproj
-├── tests/
-│   └── OrderService.Tests/
-│       ├── OrderRepositoryTests.cs
-│       └── OrderService.Tests.csproj
-└── .github/workflows/
-    └── ci.yml
-```
-
-## Próximas etapas possíveis
-
-- Introduzir persistência apenas quando houver requisito claro.
-- Se o projeto evoluir para API, adicionar endpoints, autenticação, autorização, validação HTTP e testes de integração antes de expô-lo publicamente.
-
-Projeto de portfólio em desenvolvimento.
+Projeto de portfólio mantido na conta [juniordev830](https://github.com/juniordev830).

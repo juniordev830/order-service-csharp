@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project_kind": "Serviço de pedidos C# em memória",
+  "entry_points": [
+    "OrderRepository.cs",
+    "Program.cs"
+  ],
+  "test_commands": [
+    "dotnet test tests/OrderService.Tests/OrderService.Tests.csproj --configuration Release"
+  ],
+  "review_focus": [
+    "Validação de pedidos e integridade de totais",
+    "Limites e concorrência do repositório em memória"
+  ]
+}

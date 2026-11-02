@@ -59,7 +59,7 @@ O workflow `.github/workflows/ci.yml` restaura os pacotes, verifica vulnerabilid
 │   └── OrderService.Tests/
 │       ├── OrderRepositoryTests.cs
 │       └── OrderService.Tests.csproj
-└── .github/work    flows/
+└── .github/workflows/
     └── ci.yml
 ```
 

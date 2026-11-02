@@ -1,42 +1,72 @@
 # Order Service C#
 
-Protótipo em C# que modela pedidos em memória. O código atual contém um registro de pedido, um repositório simples baseado em lista e operações para adicionar e localizar pedidos.
-
-> Apesar do nome, a versão atual é uma aplicação de console, não uma API HTTP nem um serviço distribuído.
+Protótipo educacional em C# que modela pedidos em memória. A versão atual é uma aplicação de console com um repositório simples, validações de entrada e testes unitários. **Não é uma API HTTP, não usa banco de dados e não persiste pedidos entre execuções.**
 
 ## Tecnologias
 
-- C#
-- .NET SDK compatível com o arquivo `.csproj`
+- C# e .NET 8
+- xUnit para testes automatizados
+- GitHub Actions para build, testes e auditoria de pacotes NuGet
+
+## Requisitos
+
+- .NET SDK 8.0
 
 ## Executar
 
+Na raiz do repositório:
+
 ```bash
-dotnet build
+dotnet restore
+dotnet build --configuration Release
 dotnet run
 ```
 
-## Comportamento atual
+O programa cria um pedido demonstrativo, salva no repositório em memória, consulta pelo identificador e imprime o resultado.
 
-- Cria um pedido de demonstração.
-- Valida se o identificador do pedido não está vazio.
-- Armazena o pedido na memória do processo.
-- Consulta o pedido pelo identificador e imprime o resultado.
+## Comportamento implementado
 
-Os dados são perdidos quando o programa termina.
+O `OrderRepository` oferece:
+
+- `AddOrder(Order)`: rejeita pedido nulo, identificador vazio, nome de cliente vazio, total menor ou igual a zero, status vazio e IDs duplicados.
+- Normalização: remove espaços nas extremidades de identificador, nome do cliente e status antes de salvar.
+- `GetOrderById(string)`: consulta por identificador; retorna `null` para uma chave vazia ou inexistente.
+- `GetAllOrders()`: devolve uma cópia da coleção, para que alterações posteriores no repositório não modifiquem o snapshot já retornado.
+
+O repositório é baseado em `List<Order>` e não é persistente nem thread-safe. Não deve ser usado como armazenamento de produção.
+
+## Testes
+
+Execute:
+
+```bash
+dotnet test tests/OrderService.Tests/OrderService.Tests.csproj --configuration Release
+```
+
+Os testes cobrem inclusão e consulta, snapshot da coleção, campos inválidos, IDs duplicados, normalização e consulta com identificadores vazios.
+
+## CI e segurança de dependências
+
+O workflow `.github/workflows/ci.yml` restaura os pacotes, verifica vulnerabilidades NuGet (incluindo dependências transitivas), compila em Release e executa os testes.
 
 ## Estrutura
 
-- `Program.cs`: modelos, repositório em memória e ponto de entrada.
-- `OrderService.csproj`: configuração do projeto.
-- `README.md`: documentação.
+```text
+.
+├── Program.cs
+├── OrderService.csproj
+├── tests/
+│   └── OrderService.Tests/
+│       ├── OrderRepositoryTests.cs
+│       └── OrderService.Tests.csproj
+└── .github/work    flows/
+    └── ci.yml
+```
 
-## Próximas melhorias
+## Próximas etapas possíveis
 
-- Separar modelo, repositório e aplicação em arquivos distintos.
-- Validar identificador, cliente e valor total.
-- Adicionar testes unitários.
-- Introduzir persistência se necessário.
-- Só depois criar endpoints HTTP, autenticação e documentação de API.
+- Separar domínio, repositório e ponto de entrada em arquivos/projetos distintos.
+- Introduzir persistência apenas quando houver requisito claro.
+- Se o projeto evoluir para API, adicionar endpoints, autenticação, autorização, validação HTTP e testes de integração antes de expô-lo publicamente.
 
-Projeto educacional em evolução.
+Projeto de portfólio em desenvolvimento.

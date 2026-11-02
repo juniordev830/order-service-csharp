@@ -7,6 +7,7 @@ namespace OrderService
     public class OrderRepository
     {
         private readonly List<Order> _orders = new();
+        private readonly object _sync = new();
 
         public void AddOrder(Order order)
         {
@@ -27,10 +28,15 @@ namespace OrderService
                 Status = order.Status.Trim()
             };
 
-            if (_orders.Any(existing => string.Equals(existing.OrderId, normalizedOrder.OrderId, StringComparison.Ordinal)))
-                throw new InvalidOperationException($"An order with ID '{normalizedOrder.OrderId}' already exists.");
+            // Validate uniqueness and add atomically so two concurrent requests cannot
+            // accept the same ID. Readers use the same lock for consistent snapshots.
+            lock (_sync)
+            {
+                if (_orders.Any(existing => string.Equals(existing.OrderId, normalizedOrder.OrderId, StringComparison.Ordinal)))
+                    throw new InvalidOperationException($"An order with ID '{normalizedOrder.OrderId}' already exists.");
 
-            _orders.Add(normalizedOrder);
+                _orders.Add(normalizedOrder);
+            }
         }
 
         public Order? GetOrderById(string orderId)
@@ -38,10 +44,19 @@ namespace OrderService
             if (string.IsNullOrWhiteSpace(orderId))
                 return null;
 
-            return _orders.FirstOrDefault(o => o.OrderId == orderId.Trim());
+            lock (_sync)
+            {
+                return _orders.FirstOrDefault(o => o.OrderId == orderId.Trim());
+            }
         }
 
         // Return a snapshot so callers cannot mutate the repository's internal list.
-        public IReadOnlyList<Order> GetAllOrders() => _orders.ToArray();
+        public IReadOnlyList<Order> GetAllOrders()
+        {
+            lock (_sync)
+            {
+                return _orders.ToArray();
+            }
+        }
     }
 }

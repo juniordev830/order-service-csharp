@@ -18,5 +18,13 @@ jobs:
         with:
           dotnet-version: "8.0.x"
       - run: dotnet restore
+      - name: Audit vulnerable NuGet packages
+        shell: bash
+        run: |
+          dotnet list package --vulnerable --include-transitive | tee "$RUNNER_TEMP/nuget-vulnerabilities.txt"
+          if grep -q "has the following vulnerable packages" "$RUNNER_TEMP/nuget-vulnerabilities.txt"; then
+            echo "::error::NuGet vulnerability report contains vulnerable packages."
+            exit 1
+          fi
       - run: dotnet build --no-restore --configuration Release
       - run: dotnet test tests/OrderService.Tests/OrderService.Tests.csproj --configuration Release

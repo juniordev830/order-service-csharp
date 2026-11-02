@@ -4,10 +4,37 @@ using System.Linq;
 
 namespace OrderService
 {
+    /// <summary>
+    /// Thread-safe, in-memory repository. Status transitions update immutable Order records.
+    /// No persistence or distributed coordination is provided.
+    /// </summary>
     public class OrderRepository
     {
         private readonly List<Order> _orders = new();
         private readonly object _sync = new();
+
+        // The graph deliberately excludes backward transitions and terminal-state changes.
+        private static readonly IReadOnlyDictionary<string, string[]> AllowedTransitions =
+            new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                ["PENDING"] = new[] { "CONFIRMED", "CANCELLED" },
+                ["CONFIRMED"] = new[] { "SHIPPED", "CANCELLED" },
+                ["SHIPPED"] = new[] { "DELIVERED" },
+                ["DELIVERED"] = Array.Empty<string>(),
+                ["CANCELLED"] = Array.Empty<string>()
+            };
+
+        private static string NormalizeStatus(string status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                throw new ArgumentException("Order status cannot be empty", nameof(status));
+
+            var normalized = status.Trim().ToUpperInvariant();
+            if (!AllowedTransitions.ContainsKey(normalized))
+                throw new ArgumentException("Unsupported order status", nameof(status));
+
+            return normalized;
+        }
 
         public void AddOrder(Order order)
         {
@@ -19,23 +46,51 @@ namespace OrderService
                 throw new ArgumentException("Customer name cannot be empty", nameof(order));
             if (order.TotalAmount <= 0)
                 throw new ArgumentOutOfRangeException(nameof(order), "Order total must be greater than zero.");
-            if (string.IsNullOrWhiteSpace(order.Status))
-                throw new ArgumentException("Order status cannot be empty", nameof(order));
+
             var normalizedOrder = order with
             {
                 OrderId = order.OrderId.Trim(),
                 CustomerName = order.CustomerName.Trim(),
-                Status = order.Status.Trim()
+                Status = NormalizeStatus(order.Status)
             };
 
-            // Validate uniqueness and add atomically so two concurrent requests cannot
-            // accept the same ID. Readers use the same lock for consistent snapshots.
             lock (_sync)
             {
                 if (_orders.Any(existing => string.Equals(existing.OrderId, normalizedOrder.OrderId, StringComparison.Ordinal)))
                     throw new InvalidOperationException($"An order with ID '{normalizedOrder.OrderId}' already exists.");
 
                 _orders.Add(normalizedOrder);
+            }
+        }
+
+        /// <summary>
+        /// Atomically moves an existing order to an allowed state. Repeating the current
+        /// status is an idempotent no-op. Unknown IDs and invalid transitions fail.
+        /// </summary>
+        public Order UpdateOrderStatus(string orderId, string nextStatus)
+        {
+            if (string.IsNullOrWhiteSpace(orderId))
+                throw new ArgumentException("Order ID cannot be empty", nameof(orderId));
+
+            var normalizedId = orderId.Trim();
+            var normalizedNextStatus = NormalizeStatus(nextStatus);
+
+            lock (_sync)
+            {
+                var index = _orders.FindIndex(o => string.Equals(o.OrderId, normalizedId, StringComparison.Ordinal));
+                if (index < 0)
+                    throw new KeyNotFoundException($"Order '{normalizedId}' not found.");
+
+                var current = _orders[index];
+                if (string.Equals(current.Status, normalizedNextStatus, StringComparison.Ordinal))
+                    return current;
+
+                if (!AllowedTransitions[current.Status].Contains(normalizedNextStatus, StringComparer.Ordinal))
+                    throw new InvalidOperationException($"Cannot transition order from {current.Status} to {normalizedNextStatus}.");
+
+                var updated = current with { Status = normalizedNextStatus };
+                _orders[index] = updated;
+                return updated;
             }
         }
 

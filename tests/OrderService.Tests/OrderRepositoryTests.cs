@@ -85,4 +85,44 @@ public sealed class OrderRepositoryTests
 
         Assert.Null(repository.GetOrderById(id));
     }
+
+    [Fact]
+    public void ConcurrentInsertsForSameIdAllowExactlyOneOrder()
+    {
+        var repository = new OrderRepository();
+        var accepted = 0;
+        var duplicates = 0;
+
+        System.Threading.Tasks.Parallel.For(0, 100, _ =>
+        {
+            try
+            {
+                repository.AddOrder(new Order("ORD-CONCURRENT", "Cliente", 12m, "PENDING"));
+                System.Threading.Interlocked.Increment(ref accepted);
+            }
+            catch (InvalidOperationException)
+            {
+                System.Threading.Interlocked.Increment(ref duplicates);
+            }
+        });
+
+        Assert.Equal(1, accepted);
+        Assert.Equal(99, duplicates);
+        Assert.Single(repository.GetAllOrders());
+    }
+
+    [Fact]
+    public void ConcurrentUniqueInsertsProduceConsistentSnapshotsAndLookup()
+    {
+        var repository = new OrderRepository();
+        System.Threading.Tasks.Parallel.For(0, 100, index =>
+        {
+            repository.AddOrder(new Order($"ORD-{index}", "Cliente", 12m, "PENDING"));
+            _ = repository.GetAllOrders();
+            _ = repository.GetOrderById($"ORD-{index}");
+        });
+
+        Assert.Equal(100, repository.GetAllOrders().Count);
+        Assert.NotNull(repository.GetOrderById("ORD-99"));
+    }
 }

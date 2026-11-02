@@ -53,4 +53,36 @@ public sealed class OrderRepositoryTests
 
         Assert.Throws<InvalidOperationException>(() => repository.AddOrder(order));
     }
+
+    [Fact]
+    public void AddOrderTrimsFieldsAndLookupTrimsOrderId()
+    {
+        var repository = new OrderRepository();
+        var order = new Order("  ORD-1  ", "  Cliente  ", 99.90m, "  PENDING  ");
+
+        repository.AddOrder(order);
+
+        Assert.Equal(new Order("ORD-1", "Cliente", 99.90m, "PENDING"), repository.GetOrderById(" ORD-1 "));
+    }
+
+    [Fact]
+    public void AddOrderRejectsDuplicateIdsAfterTrimming()
+    {
+        var repository = new OrderRepository();
+        repository.AddOrder(new Order("ORD-1", "Cliente", 99.90m, "PENDING"));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            repository.AddOrder(new Order(" ORD-1 ", "Outro cliente", 20m, "PENDING")));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GetOrderByIdReturnsNullForBlankIds(string id)
+    {
+        var repository = new OrderRepository();
+        repository.AddOrder(new Order("ORD-1", "Cliente", 99.90m, "PENDING"));
+
+        Assert.Null(repository.GetOrderById(id));
+    }
 }

@@ -22,15 +22,25 @@ namespace OrderService
                 throw new ArgumentOutOfRangeException(nameof(order), "Order total must be greater than zero.");
             if (string.IsNullOrWhiteSpace(order.Status))
                 throw new ArgumentException("Order status cannot be empty", nameof(order));
-            if (_orders.Any(existing => string.Equals(existing.OrderId, order.OrderId, StringComparison.Ordinal)))
-                throw new InvalidOperationException($"An order with ID '{order.OrderId}' already exists.");
+            var normalizedOrder = order with
+            {
+                OrderId = order.OrderId.Trim(),
+                CustomerName = order.CustomerName.Trim(),
+                Status = order.Status.Trim()
+            };
 
-            _orders.Add(order);
+            if (_orders.Any(existing => string.Equals(existing.OrderId, normalizedOrder.OrderId, StringComparison.Ordinal)))
+                throw new InvalidOperationException($"An order with ID '{normalizedOrder.OrderId}' already exists.");
+
+            _orders.Add(normalizedOrder);
         }
 
         public Order? GetOrderById(string orderId)
         {
-            return _orders.FirstOrDefault(o => o.OrderId == orderId);
+            if (string.IsNullOrWhiteSpace(orderId))
+                return null;
+
+            return _orders.FirstOrDefault(o => o.OrderId == orderId.Trim());
         }
 
         // Return a snapshot so callers cannot mutate the repository's internal list.

@@ -7,12 +7,16 @@ namespace OrderService
         public static void Main(string[] args)
         {
             var repository = new OrderRepository();
-            var order = new Order("ORD-2026-001", "Alice Smith", 299.99m, "PENDING");
+            repository.AddOrder(new Order("ORD-2026-001", "Alice Smith", 299.99m, "PENDING"));
 
-            repository.AddOrder(order);
-            var fetched = repository.GetOrderById("ORD-2026-001");
+            var confirmed = repository.UpdateOrderStatus("ORD-2026-001", "CONFIRMED");
+            Console.WriteLine($"Order {confirmed.OrderId} ({confirmed.CustomerName}): {confirmed.Status}");
 
-            Console.WriteLine($"Order Service C# - Processing Order ID: {fetched?.OrderId} for {fetched?.CustomerName} (Total: ${fetched?.TotalAmount})");
+            var shipped = repository.UpdateOrderStatus(confirmed.OrderId, "SHIPPED");
+            Console.WriteLine($"Order {shipped.OrderId}: {shipped.Status}");
+
+            var delivered = repository.UpdateOrderStatus(shipped.OrderId, "DELIVERED");
+            Console.WriteLine($"Order {delivered.OrderId}: {delivered.Status} (total: {delivered.TotalAmount:C})");
         }
     }
 }

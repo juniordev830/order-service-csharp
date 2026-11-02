@@ -53,6 +53,8 @@ O workflow `.github/workflows/ci.yml` restaura os pacotes, verifica vulnerabilid
 
 ```text
 .
+├── Order.cs
+├── OrderRepository.cs
 ├── Program.cs
 ├── OrderService.csproj
 ├── tests/
@@ -65,7 +67,6 @@ O workflow `.github/workflows/ci.yml` restaura os pacotes, verifica vulnerabilid
 
 ## Próximas etapas possíveis
 
-- Separar domínio, repositório e ponto de entrada em arquivos/projetos distintos.
 - Introduzir persistência apenas quando houver requisito claro.
 - Se o projeto evoluir para API, adicionar endpoints, autenticação, autorização, validação HTTP e testes de integração antes de expô-lo publicamente.
 

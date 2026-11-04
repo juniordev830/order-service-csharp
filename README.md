@@ -28,6 +28,7 @@ O `OrderRepository` oferece:
 - `GetOrderById(string)`: busca por ID; retorna `null` para ID ausente ou vazio.
 - `GetAllOrders()`: devolve um snapshot da coleção.
 - `UpdateOrderStatus(string orderId, string nextStatus)`: altera o status atomicamente ou rejeita transições inválidas. Aceita diferenças de caixa e espaços nas extremidades; repetir o status atual é idempotente.
+- `GetOrderHistory(string orderId)`: devolve uma lista de eventos **imutáveis** de criação e mudanças de status, ordenada por sequência. Uma atualização repetida e sem mudança não gera evento duplicado. Eventos incluem `Sequence`, `PreviousStatus`, `Status` e timestamp UTC.
 
 ### Máquina de estados do pedido
 
@@ -52,13 +53,23 @@ var enviado = repository.UpdateOrderStatus("ORD-42", "SHIPPED");
 Console.WriteLine(enviado.Status); // SHIPPED
 ```
 
+Histórico de auditoria em memória:
+
+```csharp
+var events = repository.GetOrderHistory("ORD-42");
+foreach (var change in events)
+    Console.WriteLine($"{change.Sequence}: {change.PreviousStatus} -> {change.Status}");
+```
+
+O evento inicial tem `PreviousStatus = null`. Se uma mudança falhar, o histórico não é alterado. A ordem garantida vem de `Sequence` dentro de cada pedido; timestamps são horários do relógio UTC do processo, que podem sofrer ajustes.
+
 Status desconhecidos e IDs vazios causam `ArgumentException`. IDs inexistentes em atualizações causam `KeyNotFoundException`; transições proibidas causam `InvalidOperationException`. Em todos esses casos, o pedido permanece inalterado.
 
 ## Consistência e limites
 
 O repositório mantém uma lista em memória protegida por um `lock` por instância. Leitura, criação e atualização usam o mesmo lock, evitando estados intermediários observáveis dentro da instância. Uma transição cria um novo record `Order`, preservando os snapshots anteriores.
 
-**Não há** banco, autenticação, eventos de domínio, auditoria, transações distribuídas ou coordenação entre múltiplas instâncias. O mecanismo não é pronto para produção e o exemplo não realiza cobranças, remessas ou entregas reais.
+**Não há** banco, autenticação, trilha de auditoria persistente, transações distribuídas ou coordenação entre múltiplas instâncias. Os eventos de auditoria se perdem ao reiniciar o processo. O mecanismo não é pronto para produção e o exemplo não realiza cobranças, remessas ou entregas reais.
 
 ## Testes
 
@@ -66,14 +77,15 @@ O repositório mantém uma lista em memória protegida por um `lock` por instân
 dotnet test tests/OrderService.Tests/OrderService.Tests.csproj --configuration Release
 ```
 
-A suíte verifica inclusão, leitura, validação, IDs duplicados, normalização, concorrência de criação, transições permitidas e proibidas, estados terminais, idempotência, atomicidade de atualizações concorrentes e snapshots imutáveis.
+A suíte verifica inclusão, leitura, validação, IDs duplicados, normalização, concorrência de criação, transições permitidas e proibidas, estados terminais, idempotência, atomicidade de atualizações concorrentes, histórico de eventos de status e snapshots imutáveis.
 
 O workflow `.github/workflows/ci.yml` executa build e testes em pull requests. Também verifica vulnerabilidades de dependências NuGet.
 
 ## Próximas etapas
 
 - Separar regras de negócio em uma camada de serviço e repositório persistente.
-- Adicionar histórico/auditoria de status e eventos de domínio.
+- [x] Adicionar histórico de status em memória com eventos de auditoria imutáveis.
+- [ ] Persistir os eventos com garantias transacionais, retenção e controle de acesso.
 - Expor uma API somente após autenticação, autorização, validação HTTP e testes de integração.
 - Adicionar observabilidade, operações idempotentes persistentes e tratamento de concorrência entre instâncias.
 

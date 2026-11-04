@@ -11,6 +11,8 @@ namespace OrderService
     public class OrderRepository
     {
         private readonly List<Order> _orders = new();
+        private readonly Dictionary<string, List<OrderStatusEvent>> _history =
+            new(StringComparer.Ordinal);
         private readonly object _sync = new();
 
         // The graph deliberately excludes backward transitions and terminal-state changes.
@@ -60,6 +62,10 @@ namespace OrderService
                     throw new InvalidOperationException($"An order with ID '{normalizedOrder.OrderId}' already exists.");
 
                 _orders.Add(normalizedOrder);
+                _history.Add(normalizedOrder.OrderId, new List<OrderStatusEvent>
+                {
+                    new(normalizedOrder.OrderId, 1, null, normalizedOrder.Status, DateTimeOffset.UtcNow)
+                });
             }
         }
 
@@ -90,7 +96,28 @@ namespace OrderService
 
                 var updated = current with { Status = normalizedNextStatus };
                 _orders[index] = updated;
+                var events = _history[normalizedId];
+                events.Add(new OrderStatusEvent(normalizedId, events.Count + 1,
+                    current.Status, updated.Status, DateTimeOffset.UtcNow));
                 return updated;
+            }
+        }
+
+        /// <summary>
+        /// Returns an immutable snapshot of committed events in registration order.
+        /// Idempotent status updates do not create duplicate audit events.
+        /// </summary>
+        public IReadOnlyList<OrderStatusEvent> GetOrderHistory(string orderId)
+        {
+            if (string.IsNullOrWhiteSpace(orderId))
+                throw new ArgumentException("Order ID cannot be empty", nameof(orderId));
+
+            lock (_sync)
+            {
+                if (!_history.TryGetValue(orderId.Trim(), out var events))
+                    throw new KeyNotFoundException($"Order '{orderId.Trim()}' not found.");
+
+                return Array.AsReadOnly(events.ToArray());
             }
         }
 

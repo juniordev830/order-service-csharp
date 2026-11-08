@@ -78,3 +78,21 @@ O workflow `.github/workflows/ci.yml` executa build e testes em pull requests. T
 - Adicionar observabilidade, operações idempotentes persistentes e tratamento de concorrência entre instâncias.
 
 Projeto de portfólio mantido na conta [juniordev830](https://github.com/juniordev830).
+
+
+## Relatórios de pedidos e paginação
+
+O novo módulo `OrderInsights.cs` calcula um **relatório somente de leitura**, a partir de uma fotografia dos pedidos em memória. O relatório informa quantidade total, soma dos valores e contagem por status. A consulta aceita filtro por status, página a partir de zero e tamanho de página entre 1 e 100.
+
+```csharp
+var repository = new OrderRepository();
+repository.AddOrder(new Order("ORD-001", "Cliente demonstrativo", 25m, "PENDING"));
+var report = OrderInsights.Query(repository, status: "PENDING", page: 0, pageSize: 10);
+Console.WriteLine(report.TotalOrders); // 1
+Console.WriteLine(report.TotalMatching); // 1
+Console.WriteLine(report.CountsByStatus["PENDING"]); // 1
+```
+
+A ordenação usa o ID de pedido para que a paginação tenha resultado determinístico. Um relatório já gerado não muda quando outros pedidos são adicionados ou atualizados posteriormente. Pedidos inexistentes não são inventados, e páginas além do fim retornam lista vazia.
+
+**Limitações:** os totais incluem todos os pedidos, inclusive cancelados, porque refletem o valor registrado nos dados do protótipo; **não representam faturamento recebido**. A aplicação continua sem banco, API, pagamentos ou integração de vendas reais.

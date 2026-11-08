@@ -32,13 +32,16 @@ namespace OrderService
         {
             if (repository is null)
                 throw new ArgumentNullException(nameof(repository));
-            if (page < 0 || pageSize < 1 || pageSize > 100)
+            if (page < 0)
+                throw new ArgumentOutOfRangeException(nameof(page),
+                    "Page must be nonnegative.");
+            if (pageSize < 1 || pageSize > 100)
                 throw new ArgumentOutOfRangeException(nameof(pageSize),
-                    "Page must be nonnegative and page size must be from 1 to 100.");
+                    "Page size must be from 1 to 100.");
+            if (status is not null && string.IsNullOrWhiteSpace(status))
+                throw new ArgumentException("Status filter cannot be blank.", nameof(status));
 
-            var normalizedStatus = string.IsNullOrWhiteSpace(status)
-                ? null
-                : status.Trim().ToUpperInvariant();
+            var normalizedStatus = status?.Trim().ToUpperInvariant();
             if (normalizedStatus != null &&
                 !KnownStatuses.Contains(normalizedStatus, StringComparer.Ordinal))
                 throw new ArgumentException("Unsupported status filter.", nameof(status));

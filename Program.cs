@@ -17,6 +17,10 @@ namespace OrderService
 
             var delivered = repository.UpdateOrderStatus(shipped.OrderId, "DELIVERED");
             Console.WriteLine($"Order {delivered.OrderId}: {delivered.Status} (total: {delivered.TotalAmount:C})");
+            var report = OrderInsights.Query(repository, page: 0, pageSize: 10);
+            Console.WriteLine($"Orders: {report.TotalOrders}; combined value: {report.TotalAmount:C}");
+            Console.WriteLine($"Delivered: {report.CountsByStatus["DELIVERED"]}");
+
         }
     }
 }

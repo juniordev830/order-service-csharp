@@ -70,10 +70,36 @@ public sealed class OrderInsightsTests
     public void RejectsNullRepositoryInvalidPagingAndUnknownStatus()
     {
         Assert.Throws<ArgumentNullException>(() => OrderInsights.Query(null!));
-        Assert.Throws<ArgumentOutOfRangeException>(() => OrderInsights.Query(Seed(), page: -1));
+        var badPage = Assert.Throws<ArgumentOutOfRangeException>(
+            () => OrderInsights.Query(Seed(), page: -1));
+        Assert.Equal("page", badPage.ParamName);
         Assert.Throws<ArgumentOutOfRangeException>(() => OrderInsights.Query(Seed(), pageSize: 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => OrderInsights.Query(Seed(), pageSize: 101));
         Assert.Throws<ArgumentException>(() => OrderInsights.Query(Seed(), status: "REFUNDED"));
+        Assert.Throws<ArgumentException>(() => OrderInsights.Query(Seed(), status: " "));
+        Assert.Throws<ArgumentException>(() => OrderInsights.Query(Seed(), status: ""));
+        Assert.Equal(4, OrderInsights.Query(Seed(), status: null).TotalOrders);
+    }
+
+    [Fact]
+    public void ReportsStayInternallyConsistentDuringConcurrentInserts()
+    {
+        var repository = new OrderRepository();
+        System.Threading.Tasks.Parallel.For(0, 80, index =>
+        {
+            repository.AddOrder(new Order(
+                $"ORD-{index:D3}", "Cliente ficticio", 2m, "PENDING"));
+
+            var report = OrderInsights.Query(repository, pageSize: 100);
+            Assert.Equal(report.TotalOrders, report.TotalMatching);
+            Assert.Equal(report.TotalOrders, report.Items.Count);
+            Assert.Equal(report.TotalOrders, report.CountsByStatus.Values.Sum());
+            Assert.Equal(report.TotalOrders * 2m, report.TotalAmount);
+        });
+
+        var finalReport = OrderInsights.Query(repository, pageSize: 100);
+        Assert.Equal(80, finalReport.TotalOrders);
+        Assert.Equal(160m, finalReport.TotalAmount);
     }
 
     [Fact]

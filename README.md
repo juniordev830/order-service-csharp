@@ -96,3 +96,9 @@ Console.WriteLine(report.CountsByStatus["PENDING"]); // 1
 A ordenação usa o ID de pedido para que a paginação tenha resultado determinístico. Um relatório já gerado não muda quando outros pedidos são adicionados ou atualizados posteriormente. Pedidos inexistentes não são inventados, e páginas além do fim retornam lista vazia.
 
 **Limitações:** os totais incluem todos os pedidos, inclusive cancelados, porque refletem o valor registrado nos dados do protótipo; **não representam faturamento recebido**. A aplicação continua sem banco, API, pagamentos ou integração de vendas reais.
+
+## Indicadores financeiros por status de pedido
+
+O novo `OrderFinancials.Summarize(repository)` fornece valores registrados por status, separando os grupos **em andamento** (`PENDING`, `CONFIRMED`, `SHIPPED`), **entregues** e **cancelados**, além da média por pedido e do total registrado. Todas as métricas são calculadas a partir de um único snapshot e devolvidas como estrutura de leitura, com proteção contra overflow de `decimal`. Os testes cobrem pedidos vazios, alteração posterior de status, valores máximos e operações concorrentes.
+
+**Atenção:** pedidos entregues não significam pagamentos liquidados. Estes indicadores são exclusivamente valores do protótipo em memória e não constituem relatório de faturamento real.

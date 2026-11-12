@@ -102,3 +102,7 @@ A ordenação usa o ID de pedido para que a paginação tenha resultado determin
 O novo `OrderFinancials.Summarize(repository)` fornece valores registrados por status, separando os grupos **em andamento** (`PENDING`, `CONFIRMED`, `SHIPPED`), **entregues** e **cancelados**, além da média por pedido e do total registrado. Todas as métricas são calculadas a partir de um único snapshot e devolvidas como estrutura de leitura, com proteção contra overflow de `decimal`. Os testes cobrem pedidos vazios, alteração posterior de status, valores máximos e operações concorrentes.
 
 **Atenção:** pedidos entregues não significam pagamentos liquidados. Estes indicadores são exclusivamente valores do protótipo em memória e não constituem relatório de faturamento real.
+
+## Validação e manutenção
+
+Consulte o [guia técnico de validação](docs/GUIA_DE_VALIDACAO.md) antes de alterar o código: ele reúne os comandos, casos de regressão e limites atuais do projeto.

@@ -1,5 +1,7 @@
 # Order Service C#
 
+**Navegação** · [Tecnologias](#tecnologias) · [Requisitos e execução](#requisitos-e-execução) · [Regras de negócio](#regras-de-negócio) · [Código e estudo](docs/ENGENHARIA_REVERSA.md)
+
 Projeto educacional de Engenharia de Software em **C# e .NET 8** que modela pedidos com regras de negócio, transições de estado atômicas e testes de concorrência. É uma aplicação de console que usa dados em memória: **não é uma API HTTP, não usa banco de dados e não persiste pedidos entre execuções**.
 
 ## Tecnologias
@@ -106,3 +108,7 @@ O novo `OrderFinancials.Summarize(repository)` fornece valores registrados por s
 ## Validação e manutenção
 
 Consulte o [guia técnico de validação](docs/GUIA_DE_VALIDACAO.md) antes de alterar o código: ele reúne os comandos, casos de regressão e limites atuais do projeto.
+
+## Código e roteiro de estudo
+
+Quais invariantes devem permanecer verdadeiras quando duas transições chegam ao mesmo tempo? O [guia de engenharia reversa](docs/ENGENHARIA_REVERSA.md) reúne o mapa dos módulos e uma pergunta técnica baseada no projeto.
